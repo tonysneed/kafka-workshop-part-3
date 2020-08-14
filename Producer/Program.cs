@@ -141,7 +141,7 @@ namespace Producer
         {
             int? tmp = new Random().Next(-32, 100);
             var ts = GoogleTimestamp.FromDateTime(DateTime.UtcNow);
-            //var val = new TValue();
+            var val = new TValue();
             //if (val is IHelloReply val1)
             //{
             //    val1.Message = msg;
