@@ -1,5 +1,9 @@
 ﻿using Confluent.Kafka;
 using Confluent.Kafka.Admin;
+using Confluent.Kafka.SyncOverAsync;
+using Confluent.SchemaRegistry.Serdes;
+using Google.Protobuf;
+using GoogleTimestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -12,17 +16,8 @@ namespace Consumer
 {
     class Program
     {
-        private static async Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            // Get consumer options
-            var config = LoadConfiguration();
-            var consumerOptions = config
-                .GetSection(nameof(ConsumerOptions))
-                .Get<ConsumerOptions>();
-
-            Console.WriteLine($"Started consumer, Ctrl-C to stop consuming.");
-            Console.WriteLine($"Consumer Brokers: {consumerOptions.Brokers}");
-
             // Prevent the process from terminating
             CancellationTokenSource cts = new CancellationTokenSource();
             Console.CancelKeyPress += (_, e) => {
@@ -30,14 +25,55 @@ namespace Consumer
                 cts.Cancel();
             };
 
+            // Get consumer options
+            var config = LoadConfiguration();
+            var consumerOptions = config
+                .GetSection(nameof(ConsumerOptions))
+                .Get<ConsumerOptions>();
+
             // Create topics
             await CreateTopicAsync(consumerOptions.Brokers, consumerOptions.TopicsList);
 
+            // Confirm topic
+            Console.WriteLine($"Press Ctrl-C to quit.");
+            Console.WriteLine($"\nDefault topic: {consumerOptions.TopicsList[0]}");
+            Console.WriteLine("> Confirm: <Enter>, New value<Enter>");
+            var topic = Console.ReadLine();
+            if (topic.Length == 0)
+                topic = consumerOptions.TopicsList[0];
+            var topics = new List<string> { topic };
+            Console.WriteLine($"Topic: {topic}");
+
+            // Get schema version number
+            Console.WriteLine("\nEnter schema version number:");
+            if (!int.TryParse(Console.ReadLine(), out int version))
+                return;
+            Console.WriteLine($"Schema version: {version}");
+
             // Consume events
-            Run_Consumer(consumerOptions.Brokers, consumerOptions.TopicsList, cts.Token);
+            switch (version)
+            {
+                case 1:
+                    // TODO: Call Run_Consumer with Protos.v1.HelloReply
+                    //Run_Consumer<Protos.v1.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    break;
+                //case 2:
+                //    Run_Consumer<Protos.v2.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                //    break;
+                //case 3:
+                //    Run_Consumer<Protos.v3.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                //    break;
+                //case 4:
+                //    Run_Consumer<Protos.v4.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                //    break;
+                //case 5:
+                //    Run_Consumer<Protos.v5.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                //    break;
+            }
         }
 
-        private static void Run_Consumer(string brokerList, List<string> topics, CancellationToken cancellationToken)
+        public static void Run_Consumer<TValue>(string brokerList, List<string> topics, CancellationToken cancellationToken)
+            where TValue : class, IMessage<TValue>, new()
         {
             var config = new ConsumerConfig
             {
@@ -52,27 +88,18 @@ namespace Consumer
 
             const int commitPeriod = 5;
 
-            // Note: If a key or value deserializer is not set (as is the case below), the 
-            // deserializer corresponding to the appropriate type from Confluent.Kafka.Deserializers
-            // will be used automatically (where available). The default deserializer for string
-            // is UTF8. The default deserializer for Ignore returns null for all input data
-            // (including non-null data).
-            using (var consumer = new ConsumerBuilder<int, string>(config)
-                // Note: All handlers are called on the main .Consume thread.
+            using (var consumer = new ConsumerBuilder<int, TValue>(config)
                 .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
-                // .SetStatisticsHandler((_, json) => Console.WriteLine($"Statistics: {json}"))
                 .SetPartitionsAssignedHandler((c, partitions) =>
                 {
-                    Console.WriteLine($"Assigned partitions: [{string.Join(", ", partitions)}]");
-                    // possibly manually specify start offsets or override the partition assignment provided by
-                    // the consumer group by returning a list of topic/partition/offsets to assign to, e.g.:
-                    // 
-                    // return partitions.Select(tp => new TopicPartitionOffset(tp, externalOffsets[tp]));
+                    Console.WriteLine($"Assigned partitions: [{string.Join(", ", partitions)}]\n");
                 })
                 .SetPartitionsRevokedHandler((c, partitions) =>
                 {
                     Console.WriteLine($"Revoking assignment: [{string.Join(", ", partitions)}]");
                 })
+                // TODO: Set value Protobuf deserializer
+                //.SetValueDeserializer(new ProtobufDeserializer<TValue>().AsSyncOverAsync())
                 .Build())
             {
                 consumer.Subscribe(topics);
@@ -93,16 +120,10 @@ namespace Consumer
                                 continue;
                             }
 
-                            Console.WriteLine($"Received message at {consumeResult.TopicPartitionOffset}: {consumeResult.Message.Value}");
+                            PrintConsumeResult(consumeResult);
 
                             if (consumeResult.Offset % commitPeriod == 0)
                             {
-                                // The Commit method sends a "commit offsets" request to the Kafka
-                                // cluster and synchronously waits for the response. This is very
-                                // slow compared to the rate at which the consumer is capable of
-                                // consuming messages. A high performance application will typically
-                                // commit offsets relatively infrequently and be designed handle
-                                // duplicate messages in the event of failure.
                                 try
                                 {
                                     consumer.Commit(consumeResult);
@@ -127,16 +148,43 @@ namespace Consumer
             }
         }
 
-        private static IConfiguration LoadConfiguration()
+        private static void PrintConsumeResult<TValue>(ConsumeResult<int, TValue> consumeResult)
+            where TValue : class, IMessage<TValue>, new()
         {
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables();
-            return builder.Build();
+            var key = consumeResult.Message.Key;
+            var msg = string.Empty;
+            var tmp = string.Empty;
+            GoogleTimestamp ts = null;
+            //if (consumeResult.Message.Value is Protos.v1.HelloReply val1)
+            //{
+            //    msg = val1.Message;
+            //}
+            //if (consumeResult.Message.Value is Protos.v2.HelloReply val2)
+            //{
+            //    msg = val2.Message;
+            //    tmp = val2.TemperatureF != null ? $"at {val2.TemperatureF} degrees" : string.Empty;
+            //}
+            //if (consumeResult.Message.Value is Protos.v3.HelloReply val3)
+            //{
+            //    msg = val3.Message;
+            //    tmp = val3.TemperatureF != null ? $"at {val3.TemperatureF} degrees" : string.Empty;
+            //    ts = val3.DateTimeStamp;
+            //}
+            //if (consumeResult.Message.Value is Protos.v4.HelloReply val4)
+            //{
+            //    msg = val4.Message;
+            //    ts = val4.DateTimeStamp;
+            //}
+            //if (consumeResult.Message.Value is Protos.v5.HelloReply val5)
+            //{
+            //    msg = val5.Message;
+            //    var dt = DateTime.SpecifyKind(DateTime.Parse(val5.DateTimeStamp), DateTimeKind.Utc);
+            //    ts = GoogleTimestamp.FromDateTime(dt);
+            //}
+            Console.WriteLine($"Received message at {consumeResult.TopicPartitionOffset}: {key} (key) {msg} {tmp} {ts}");
         }
 
-        private static async Task CreateTopicAsync(string brokerList, List<string> topics)
+        static async Task CreateTopicAsync(string brokerList, List<string> topics)
         {
             using (var adminClient = new AdminClientBuilder(new AdminClientConfig { BootstrapServers = brokerList }).Build())
             {
@@ -158,6 +206,15 @@ namespace Consumer
                     Console.WriteLine($"An error occured creating topic {e.Results[0].Topic}: {e.Results[0].Error.Reason}");
                 }
             }
+        }
+
+        private static IConfiguration LoadConfiguration()
+        {
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables();
+            return builder.Build();
         }
     }
 }
