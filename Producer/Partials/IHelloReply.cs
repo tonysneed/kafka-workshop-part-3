@@ -1,4 +1,4 @@
-﻿//using GoogleTimestamp = Google.Protobuf.WellKnownTypes.Timestamp;
+﻿using GoogleTimestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Protos
 {
@@ -11,24 +11,24 @@ namespace Protos
     {
     }
 
-    //public interface IHelloReply_2 : IHelloReply
-    //{
-    //    int? TemperatureF { get; set; }
-    //}
+    public interface IHelloReply_2 : IHelloReply
+    {
+        int? TemperatureF { get; set; }
+    }
 
-    //public interface IHelloReply_3 : IHelloReply
-    //{
-    //    int? TemperatureF { get; set; }
-    //    public GoogleTimestamp DateTimeStamp { get; set; }
-    //}
+    public interface IHelloReply_3 : IHelloReply
+    {
+        int? TemperatureF { get; set; }
+        public GoogleTimestamp DateTimeStamp { get; set; }
+    }
 
-    //public interface IHelloReply_4 : IHelloReply
-    //{
-    //    public GoogleTimestamp DateTimeStamp { get; set; }
-    //}
+    public interface IHelloReply_4 : IHelloReply
+    {
+        public GoogleTimestamp DateTimeStamp { get; set; }
+    }
 
-    //public interface IHelloReply_5 : IHelloReply
-    //{
-    //    public string DateTimeStamp { get; set; }
-    //}
+    public interface IHelloReply_5 : IHelloReply
+    {
+        public string DateTimeStamp { get; set; }
+    }
 }

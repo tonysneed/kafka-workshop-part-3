@@ -7,6 +7,8 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
 
 namespace Producer
 {
@@ -83,20 +85,20 @@ namespace Producer
                 {
                     case 1:
                         // TODO: Call Run_Producer with Protos.v1.HelloReply
-                        //await Run_Producer<Protos.v1.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
+                        await Run_Producer<Protos.v1.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
                         break;
-                    //case 2:
-                    //    await Run_Producer<Protos.v2.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
-                    //    break;
-                    //case 3:
-                    //    await Run_Producer<Protos.v3.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
-                    //    break;
-                    //case 4:
-                    //    await Run_Producer<Protos.v4.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
-                    //    break;
-                    //case 5:
-                    //    await Run_Producer<Protos.v5.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
-                    //    break;
+                    case 2:
+                        await Run_Producer<Protos.v2.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
+                        break;
+                    case 3:
+                        await Run_Producer<Protos.v3.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
+                        break;
+                    case 4:
+                        await Run_Producer<Protos.v4.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
+                        break;
+                    case 5:
+                        await Run_Producer<Protos.v5.HelloReply>(producerOptions.Brokers, topic, producerOptions.SchemaRegistryUrl, key, text);
+                        break;
                 }
             }
         }
@@ -107,14 +109,15 @@ namespace Producer
         {
             var config = new ProducerConfig { BootstrapServers = brokerList };
 
-            // TODO: Create SchemaRegistryConfig
+            // Create SchemaRegistryConfig
+            var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
 
-            // TODO: Create CachedSchemaRegistryClient
-
+            // Create CachedSchemaRegistryClient
+            using (var schemaRegistry = new CachedSchemaRegistryClient(schemaRegistryConfig))
             using (var producer = new ProducerBuilder<int, TValue>(config)
 
                 // TODO: Set value Protobuf serializer using schema registry
-
+                .SetValueSerializer(new ProtobufSerializer<TValue>(schemaRegistry))
                 .Build())
             {
                 // Create message
@@ -142,27 +145,27 @@ namespace Producer
             int? tmp = new Random().Next(-32, 100);
             var ts = GoogleTimestamp.FromDateTime(DateTime.UtcNow);
             var val = new TValue();
-            //if (val is IHelloReply val1)
-            //{
-            //    val1.Message = msg;
-            //};
-            //if (val is IHelloReply_2 val2)
-            //{
-            //    val2.TemperatureF = tmp;
-            //};
-            //if (val is IHelloReply_3 val3)
-            //{
-            //    val3.TemperatureF = tmp;
-            //    val3.DateTimeStamp = ts;
-            //};
-            //if (val is IHelloReply_4 val4)
-            //{
-            //    val4.DateTimeStamp = ts;
-            //};
-            //if (val is IHelloReply_5 val5)
-            //{
-            //    val5.DateTimeStamp = DateTime.UtcNow.ToLongTimeString();
-            //};
+            if (val is IHelloReply val1)
+            {
+                val1.Message = msg;
+            };
+            if (val is IHelloReply_2 val2)
+            {
+                val2.TemperatureF = tmp;
+            };
+            if (val is IHelloReply_3 val3)
+            {
+                val3.TemperatureF = tmp;
+                val3.DateTimeStamp = ts;
+            };
+            if (val is IHelloReply_4 val4)
+            {
+                val4.DateTimeStamp = ts;
+            };
+            if (val is IHelloReply_5 val5)
+            {
+                val5.DateTimeStamp = DateTime.UtcNow.ToLongTimeString();
+            };
             return val;
         }
 
@@ -172,32 +175,32 @@ namespace Producer
             var msg = string.Empty;
             var tmp = string.Empty;
             GoogleTimestamp ts = null;
-            //if (val is Protos.v1.HelloReply val1)
-            //{
-            //    msg = val1.Message;
-            //}
-            //if (val is Protos.v2.HelloReply val2)
-            //{
-            //    msg = val2.Message;
-            //    tmp = val2.TemperatureF != null ? $"at {val2.TemperatureF} degrees" : string.Empty;
-            //}
-            //if (val is Protos.v3.HelloReply val3)
-            //{
-            //    msg = val3.Message;
-            //    tmp = val3.TemperatureF != null ? $"at {val3.TemperatureF} degrees" : string.Empty;
-            //    ts = val3.DateTimeStamp;
-            //}
-            //if (val is Protos.v4.HelloReply val4)
-            //{
-            //    msg = val4.Message;
-            //    ts = val4.DateTimeStamp;
-            //}
-            //if (val is Protos.v5.HelloReply val5)
-            //{
-            //    msg = val5.Message;
-            //    var dt = DateTime.SpecifyKind(DateTime.Parse(val5.DateTimeStamp), DateTimeKind.Utc);
-            //    ts = GoogleTimestamp.FromDateTime(dt);
-            //}
+            if (val is Protos.v1.HelloReply val1)
+            {
+                msg = val1.Message;
+            }
+            if (val is Protos.v2.HelloReply val2)
+            {
+                msg = val2.Message;
+                tmp = val2.TemperatureF != null ? $"at {val2.TemperatureF} degrees" : string.Empty;
+            }
+            if (val is Protos.v3.HelloReply val3)
+            {
+                msg = val3.Message;
+                tmp = val3.TemperatureF != null ? $"at {val3.TemperatureF} degrees" : string.Empty;
+                ts = val3.DateTimeStamp;
+            }
+            if (val is Protos.v4.HelloReply val4)
+            {
+                msg = val4.Message;
+                ts = val4.DateTimeStamp;
+            }
+            if (val is Protos.v5.HelloReply val5)
+            {
+                msg = val5.Message;
+                var dt = DateTime.SpecifyKind(DateTime.Parse(val5.DateTimeStamp), DateTimeKind.Utc);
+                ts = GoogleTimestamp.FromDateTime(dt);
+            }
             Console.WriteLine($"\nMessage value: {key} (key) {msg} {tmp} {ts}");
         }
 

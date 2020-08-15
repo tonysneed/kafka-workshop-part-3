@@ -54,21 +54,21 @@ namespace Consumer
             switch (version)
             {
                 case 1:
-                    // TODO: Call Run_Consumer with Protos.v1.HelloReply
-                    //Run_Consumer<Protos.v1.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    // Call Run_Consumer with Protos.v1.HelloReply
+                    Run_Consumer<Protos.v1.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
                     break;
-                //case 2:
-                //    Run_Consumer<Protos.v2.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
-                //    break;
-                //case 3:
-                //    Run_Consumer<Protos.v3.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
-                //    break;
-                //case 4:
-                //    Run_Consumer<Protos.v4.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
-                //    break;
-                //case 5:
-                //    Run_Consumer<Protos.v5.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
-                //    break;
+                case 2:
+                    Run_Consumer<Protos.v2.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    break;
+                case 3:
+                    Run_Consumer<Protos.v3.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    break;
+                case 4:
+                    Run_Consumer<Protos.v4.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    break;
+                case 5:
+                    Run_Consumer<Protos.v5.HelloReply>(consumerOptions.Brokers, topics, cts.Token);
+                    break;
             }
         }
 
@@ -98,8 +98,8 @@ namespace Consumer
                 {
                     Console.WriteLine($"Revoking assignment: [{string.Join(", ", partitions)}]");
                 })
-                // TODO: Set value Protobuf deserializer
-                //.SetValueDeserializer(new ProtobufDeserializer<TValue>().AsSyncOverAsync())
+                // Set value Protobuf deserializer
+                .SetValueDeserializer(new ProtobufDeserializer<TValue>().AsSyncOverAsync())
                 .Build())
             {
                 consumer.Subscribe(topics);
@@ -155,32 +155,32 @@ namespace Consumer
             var msg = string.Empty;
             var tmp = string.Empty;
             GoogleTimestamp ts = null;
-            //if (consumeResult.Message.Value is Protos.v1.HelloReply val1)
-            //{
-            //    msg = val1.Message;
-            //}
-            //if (consumeResult.Message.Value is Protos.v2.HelloReply val2)
-            //{
-            //    msg = val2.Message;
-            //    tmp = val2.TemperatureF != null ? $"at {val2.TemperatureF} degrees" : string.Empty;
-            //}
-            //if (consumeResult.Message.Value is Protos.v3.HelloReply val3)
-            //{
-            //    msg = val3.Message;
-            //    tmp = val3.TemperatureF != null ? $"at {val3.TemperatureF} degrees" : string.Empty;
-            //    ts = val3.DateTimeStamp;
-            //}
-            //if (consumeResult.Message.Value is Protos.v4.HelloReply val4)
-            //{
-            //    msg = val4.Message;
-            //    ts = val4.DateTimeStamp;
-            //}
-            //if (consumeResult.Message.Value is Protos.v5.HelloReply val5)
-            //{
-            //    msg = val5.Message;
-            //    var dt = DateTime.SpecifyKind(DateTime.Parse(val5.DateTimeStamp), DateTimeKind.Utc);
-            //    ts = GoogleTimestamp.FromDateTime(dt);
-            //}
+            if (consumeResult.Message.Value is Protos.v1.HelloReply val1)
+            {
+                msg = val1.Message;
+            }
+            if (consumeResult.Message.Value is Protos.v2.HelloReply val2)
+            {
+                msg = val2.Message;
+                tmp = val2.TemperatureF != null ? $"at {val2.TemperatureF} degrees" : string.Empty;
+            }
+            if (consumeResult.Message.Value is Protos.v3.HelloReply val3)
+            {
+                msg = val3.Message;
+                tmp = val3.TemperatureF != null ? $"at {val3.TemperatureF} degrees" : string.Empty;
+                ts = val3.DateTimeStamp;
+            }
+            if (consumeResult.Message.Value is Protos.v4.HelloReply val4)
+            {
+                msg = val4.Message;
+                ts = val4.DateTimeStamp;
+            }
+            if (consumeResult.Message.Value is Protos.v5.HelloReply val5)
+            {
+                msg = val5.Message;
+                var dt = DateTime.SpecifyKind(DateTime.Parse(val5.DateTimeStamp), DateTimeKind.Utc);
+                ts = GoogleTimestamp.FromDateTime(dt);
+            }
             Console.WriteLine($"Received message at {consumeResult.TopicPartitionOffset}: {key} (key) {msg} {tmp} {ts}");
         }
 
